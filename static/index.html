@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="NSE 1-Minute Market Data Downloader — Bulk fetch OHLCV candles for all NSE-listed equities via Kite Connect">
+    <title>Archer Harvest — Market Data Downloader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <!-- Ambient background orbs -->
+    <div class="bg-orb bg-orb--cyan"></div>
+    <div class="bg-orb bg-orb--violet"></div>
+    <div class="bg-orb bg-orb--teal"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-brand">
+                <img src="/static/logo.png" alt="Archer Harvest" class="brand-logo">
+                <div>
+                    <h1>Archer Harvest</h1>
+                    <p class="header-subtitle">Market Data Downloader</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div id="auth-indicator" class="auth-badge auth-badge--disconnected">
+                    <span class="auth-dot"></span>
+                    <span id="auth-label">Not Connected</span>
+                </div>
+                <button id="btn-auth" class="btn btn--primary" onclick="handleAuth()">
+                    Connect Kite
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Grid -->
+        <main class="dashboard-grid">
+
+            <!-- Stats Row -->
+            <section class="stats-row">
+                <div class="stat-card" id="stat-total">
+                    <div class="stat-value" id="stat-total-val">0</div>
+                    <div class="stat-label">Total Stocks</div>
+                </div>
+                <div class="stat-card stat-card--success" id="stat-completed">
+                    <div class="stat-value" id="stat-completed-val">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+                <div class="stat-card stat-card--warning" id="stat-progress">
+                    <div class="stat-value" id="stat-progress-val">0</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-card stat-card--danger" id="stat-failed">
+                    <div class="stat-value" id="stat-failed-val">0</div>
+                    <div class="stat-label">Failed</div>
+                </div>
+                <div class="stat-card stat-card--info" id="stat-candles">
+                    <div class="stat-value" id="stat-candles-val">0</div>
+                    <div class="stat-label">Candles Fetched</div>
+                </div>
+                <div class="stat-card" id="stat-storage">
+                    <div class="stat-value" id="stat-storage-val">0 B</div>
+                    <div class="stat-label">Disk Usage</div>
+                </div>
+            </section>
+
+            <!-- Controls Panel -->
+            <section class="panel controls-panel">
+                <h2 class="panel-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="panel-icon">
+                        <circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-7-10.5 5.2 3m0-1L5 15.5m14-10.5-5.2 3m0-1L19 15.5"/>
+                    </svg>
+                    Download Controls
+                </h2>
+
+                <!-- ROW 1: Date Range + Timeframe -->
+                <div class="ctrl-row">
+                    <div class="ctrl-field">
+                        <span class="ctrl-label">From</span>
+                        <input type="date" id="date-from" value="2020-01-01" class="ctrl-input">
+                    </div>
+                    <div class="ctrl-field">
+                        <span class="ctrl-label">To</span>
+                        <input type="date" id="date-to" class="ctrl-input">
+                    </div>
+                    <div class="ctrl-field">
+                        <span class="ctrl-label">Timeframe</span>
+                        <select id="timeframe" class="ctrl-input">
+                            <option value="minute">1 Min</option>
+                            <option value="3minute">3 Min</option>
+                            <option value="5minute">5 Min</option>
+                            <option value="15minute">15 Min</option>
+                            <option value="30minute">30 Min</option>
+                            <option value="60minute">1 Hour</option>
+                            <option value="day">Daily</option>
+                        </select>
+                    </div>
+                    <div class="ctrl-field ctrl-field--grow">
+                        <span class="ctrl-label">Symbols <span class="ctrl-hint">(blank = all)</span></span>
+                        <input type="text" id="symbols-filter" placeholder="RELIANCE, TCS, INFY..." class="ctrl-input">
+                    </div>
+                </div>
+
+                <!-- ROW 2: Segments + Exchange as pill buttons -->
+                <div class="ctrl-row ctrl-row--segments">
+                    <div class="ctrl-pill-group">
+                        <span class="ctrl-label">Segments</span>
+                        <div class="pill-strip">
+                            <label class="pill-btn"><input type="checkbox" name="segment" value="Equity" checked onchange="toggleContinuousCheckbox()"><span>Equity</span></label>
+                            <label class="pill-btn"><input type="checkbox" name="segment" value="Index" onchange="toggleContinuousCheckbox()"><span>Index</span></label>
+                            <label class="pill-btn"><input type="checkbox" name="segment" value="Future" onchange="toggleContinuousCheckbox()"><span>Future</span></label>
+                            <label class="pill-btn"><input type="checkbox" name="segment" value="Option" onchange="toggleContinuousCheckbox()"><span>Option</span></label>
+                            <label class="pill-btn"><input type="checkbox" name="segment" value="Commodity" onchange="toggleContinuousCheckbox()"><span>Commodity</span></label>
+                        </div>
+                    </div>
+                    <div class="ctrl-pill-group">
+                        <span class="ctrl-label">Exchange</span>
+                        <div class="pill-strip pill-strip--radio">
+                            <label class="pill-btn"><input type="radio" name="exchange-filter" value="NSE_BSE" checked><span>NSE + BSE</span></label>
+                            <label class="pill-btn"><input type="radio" name="exchange-filter" value="NSE_ONLY"><span>NSE Only</span></label>
+                            <label class="pill-btn"><input type="radio" name="exchange-filter" value="BSE_ONLY"><span>BSE Only</span></label>
+                        </div>
+                    </div>
+                    <div class="ctrl-pill-group ctrl-pill-group--toggle">
+                        <label class="toggle-label">
+                            <div class="toggle-track" id="continuous-track" onclick="toggleContinuousManual()">
+                                <div class="toggle-thumb"></div>
+                            </div>
+                            <span>Continuous Futures</span>
+                        </label>
+                        <input type="checkbox" id="continuous-data" hidden>
+                    </div>
+                </div>
+
+                <!-- ROW 3: Action Buttons -->
+                <div class="ctrl-row ctrl-row--actions">
+                    <button id="btn-start" class="ctrl-btn ctrl-btn--start" onclick="startDownload()">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polygon points="5,3 19,12 5,21"/></svg>
+                        Start
+                    </button>
+                    <button id="btn-pause" class="ctrl-btn ctrl-btn--pause" onclick="pauseDownload()" disabled>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                        Pause
+                    </button>
+                    <button id="btn-resume" class="ctrl-btn ctrl-btn--resume" onclick="resumeDownload()" disabled>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polygon points="5,3 19,12 5,21"/></svg>
+                        Resume
+                    </button>
+                    <button id="btn-stop" class="ctrl-btn ctrl-btn--stop" onclick="stopDownload()" disabled>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                        Stop
+                    </button>
+                    <button id="btn-retry" class="ctrl-btn ctrl-btn--retry" onclick="retryFailed()" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Retry
+                    </button>
+                </div>
+            </section>
+
+            <!-- Progress Panel -->
+            <section class="panel progress-panel">
+                <h2 class="panel-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="panel-icon">
+                        <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
+                    </svg>
+                    Progress
+                </h2>
+                <div class="progress-wrapper">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+                        <span class="progress-text" id="progress-text">0%</span>
+                    </div>
+                    <div class="progress-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Status</span>
+                            <span class="meta-value" id="engine-status">Idle</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Current Stock</span>
+                            <span class="meta-value mono" id="current-stock">—</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Elapsed</span>
+                            <span class="meta-value mono" id="elapsed-time">00:00:00</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">ETA</span>
+                            <span class="meta-value mono" id="eta-time">—</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Two-column: Stock Grid + Activity Log -->
+            <div class="bottom-row">
+                <!-- Stock Grid -->
+                <section class="panel stock-panel">
+                    <div class="panel-header-row">
+                        <h2 class="panel-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="panel-icon">
+                                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                            </svg>
+                            Stock Status
+                        </h2>
+                        <input type="text" id="stock-search" placeholder="Search symbol..." class="input input--sm" oninput="filterStocks()">
+                    </div>
+                    <div class="stock-grid-wrapper">
+                        <div class="stock-grid" id="stock-grid">
+                            <div class="stock-grid-empty">Connect to Kite and start a download to see stock status here.</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Activity Log -->
+                <section class="panel log-panel">
+                    <div class="panel-header-row">
+                        <h2 class="panel-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="panel-icon">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                            Activity Log
+                        </h2>
+                        <button class="btn btn--ghost btn--sm" onclick="clearLog()">Clear</button>
+                    </div>
+                    <div class="log-container" id="log-container">
+                        <div class="log-entry log-entry--info">
+                            <span class="log-time">—</span>
+                            <span class="log-msg">Waiting for connection...</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

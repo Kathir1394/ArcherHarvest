@@ -1,0 +1,8 @@
+.env
+venv/
+__pycache__/
+*.pyc
+data/
+download_state.json
+instruments_cache.csv
+extracted_doc.txt
