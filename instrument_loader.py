@@ -72,6 +72,33 @@ class InstrumentLoader:
                 starts_ends_digit = bool(symbol and symbol[0].isdigit() and symbol[-1].isdigit())
                 if (has_digit and has_hyphen) or starts_ends_digit:
                     continue
+
+                # Categorize ETFs, INAVs, and mutual funds
+                sym_upper = symbol.upper()
+                name_upper = row.get("name", "").upper()
+                etf_suffixes = ("INAV", "ETF", "BEES", "LIQUID", "GILT", "GOLDBEES",
+                                "SILVERBEES", "NIFTYBEES", "BANKBEES")
+                is_etf_mf = False
+
+                if sym_upper.endswith(etf_suffixes):
+                    is_etf_mf = True
+                
+                etf_keywords = ("LIQUIDBEES", "LIQUIDCASE", "LIQUIDIETF", "GOLDETF",
+                                "SILVERETF", "GOLDSHARE", "GOLDCASE", "SETFNIFTY",
+                                "SETFNIF50", "SETFGOLD", "SETFSILV",
+                                "MASPTOP50", "MAHKTECH", "MOM100", "MOM30",
+                                "ABSLNN50ET", "ABSLPSE")
+                if sym_upper in etf_keywords:
+                    is_etf_mf = True
+                    
+                # Catch remaining INAVs and Mutual Funds
+                if "INAV" in sym_upper or "MUTUAL FUND" in name_upper:
+                    is_etf_mf = True
+
+                if is_etf_mf:
+                    row["ui_segment"] = "ETF/MF"
+                    filtered.append(row)
+                    continue
                     
                 if row.get("segment") == "INDICES":
                     row["ui_segment"] = "Index"

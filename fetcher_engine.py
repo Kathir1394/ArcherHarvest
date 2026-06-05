@@ -60,10 +60,13 @@ class FetcherEngine:
         self._pause_event = asyncio.Event()
         self._pause_event.set()
         self._cancel_flag = False
+        self._stopping = False
         self._running = False
         self._task: asyncio.Task | None = None
         self._event_callback: EventCallback | None = None
         self._current_symbol: str | None = None
+        self._queue: asyncio.Queue | None = None
+        self._total_workers: int = 0
 
     @property
     def is_running(self) -> bool:
@@ -77,6 +80,8 @@ class FetcherEngine:
     def status(self) -> str:
         if not self._running:
             return "idle"
+        if self._stopping:
+            return "stopping"
         if self.is_paused:
             return "paused"
         return "running"
@@ -130,14 +135,26 @@ class FetcherEngine:
     def resume(self):
         if self._running:
             self._pause_event.set()
-            log.info("Download resumed")
-
     def stop(self):
-        self._cancel_flag = True
-        self._pause_event.set()
-        if self._task and not self._task.done():
-            self._task.cancel()
         log.info("Download stop requested")
+        self._cancel_flag = True
+        self._stopping = True
+        self._pause_event.set()
+        
+        # Clear the queue gracefully so workers exit after current chunk
+        if self._queue:
+            while not self._queue.empty():
+                try:
+                    self._queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+                    
+            for _ in range(self._total_workers * 2):
+                self._queue.put_nowait(_SENTINEL)
+        
+        # DO NOT cancel the task here. Let workers finish their current chunk 
+        # and write the Parquet file to avoid data corruption or loss.
+        log.info("Engine transitioning to STOPPED state, waiting for parquet writes...")
 
     def retry_failed(self) -> bool:
         if self._running:
@@ -155,6 +172,7 @@ class FetcherEngine:
         continuous = getattr(self, '_last_continuous', False)
 
         self._cancel_flag = False
+        self._stopping = False
         self._pause_event.set()
         self._running = True
 
@@ -166,10 +184,20 @@ class FetcherEngine:
 
     def _on_done(self, task: asyncio.Task):
         self._running = False
+        self._stopping = False
         self._current_symbol = None
         exc = task.exception() if not task.cancelled() else None
         if exc:
             log.error("Fetcher loop crashed: %s", exc)
+        else:
+            log.info("Fetcher loop stopped cleanly.")
+        
+        # Fire and forget an event to notify frontend that we are fully idle
+        try:
+            loop = asyncio.get_event_loop()
+            loop.create_task(self._emit("status_change", {"status": "idle"}))
+        except RuntimeError:
+            pass
 
     async def _run_loop(
         self,
@@ -252,7 +280,7 @@ class FetcherEngine:
                         asyncio.create_task(
                             self._worker_task(
                                 queue, start_d, end_d, timeframe, continuous,
-                                session, headers, bucket, executor, loop,
+                                session, kite, bucket, executor, loop,
                             )
                         )
                     )
@@ -277,7 +305,7 @@ class FetcherEngine:
         timeframe: str,
         continuous: bool,
         session: aiohttp.ClientSession,
-        headers: dict,
+        kite,
         bucket: _TokenBucket,
         executor: ThreadPoolExecutor,
         loop: asyncio.AbstractEventLoop,
@@ -295,10 +323,6 @@ class FetcherEngine:
             idx, symbol = item
 
             try:
-                entry = state_manager.stocks.get(symbol, {})
-                if entry.get("status") == StockStatus.COMPLETED:
-                    continue
-
                 self._current_symbol = symbol
                 state_manager.mark_in_progress(symbol)
                 await self._emit("stock_started", {
@@ -316,13 +340,7 @@ class FetcherEngine:
                     continue
 
                 token = inst["instrument_token_int"]
-
-                resume_date = state_manager.get_resume_date(symbol)
                 effective_start = start_d
-                if resume_date:
-                    resumed = date.fromisoformat(resume_date) + timedelta(days=1)
-                    if resumed > effective_start:
-                        effective_start = resumed
 
                 if effective_start > end_d:
                     state_manager.mark_completed(symbol, 0)
@@ -355,7 +373,7 @@ class FetcherEngine:
                         continue
 
                     candles = await self._fetch_chunk_with_retry(
-                        session, headers, token, symbol, chunk_start, chunk_end,
+                        session, kite, token, symbol, chunk_start, chunk_end,
                         timeframe, continuous, bucket
                     )
 
@@ -410,7 +428,7 @@ class FetcherEngine:
     async def _fetch_chunk_with_retry(
         self,
         session: aiohttp.ClientSession,
-        headers: dict,
+        kite,
         token: int,
         symbol: str,
         chunk_start: date,
@@ -422,16 +440,25 @@ class FetcherEngine:
         delay = config.RETRY_BASE_DELAY
         url = f"https://api.kite.trade/instruments/historical/{token}/{timeframe}"
         
+        exch = symbol.split(":")[0] if ":" in symbol else ""
+        actual_continuous = continuous and exch not in ("NSE", "BSE")
+        
         params = {
             "from": chunk_start.strftime("%Y-%m-%d %H:%M:%S"),
             "to": chunk_end.strftime("%Y-%m-%d %H:%M:%S"),
-            "continuous": "1" if continuous else "0",
+            "continuous": "1" if actual_continuous else "0",
             "oi": "1"
         }
 
         for attempt in range(1, config.MAX_RETRIES + 1):
             try:
                 await bucket.acquire()
+                
+                headers = {
+                    "X-Kite-Version": "3",
+                    "Authorization": f"token {kite.api_key}:{kite.access_token}",
+                    "User-Agent": "Kiteconnect-python/5.0.1"
+                }
 
                 async with session.get(url, headers=headers, params=params) as resp:
                     resp_text = await resp.text()
@@ -456,17 +483,49 @@ class FetcherEngine:
 
             except Exception as exc:
                 error_msg = str(exc)
-                log.warning(
-                    "Attempt %d/%d for %s [%s → %s] failed: %s",
-                    attempt, config.MAX_RETRIES, symbol,
-                    chunk_start, chunk_end, error_msg,
-                )
-                await self._emit("retry", {
-                    "symbol": symbol,
-                    "attempt": attempt,
-                    "max_retries": config.MAX_RETRIES,
-                    "error": error_msg[:200],
-                })
+
+                if "TokenException" in error_msg:
+                    log.warning("API Token expired! Pausing engine. Please re-authenticate.")
+                    self.pause()
+                    await self._emit("status_change", {"status": "paused"})
+                    await self._emit("token_expired", {"message": "API Token expired. Please connect to Kite again and click Resume."})
+                    
+                    # Wait for the user to resume
+                    await self._pause_event.wait()
+                    # Re-loop with the exact same attempt index so it retries with the new token
+                    continue
+
+                # Non-retryable errors — skip immediately
+                non_retryable = ("invalid token", "InputException", "No data", "instrument is not available")
+                if any(phrase in error_msg for phrase in non_retryable):
+                    log.info(
+                        "Skipping %s [%s → %s]: non-retryable error: %s",
+                        symbol, chunk_start, chunk_end, error_msg[:150],
+                    )
+                    await self._emit("retry", {
+                        "symbol": symbol,
+                        "attempt": attempt,
+                        "max_retries": config.MAX_RETRIES,
+                        "error": f"SKIPPED (non-retryable): {error_msg[:150]}",
+                    })
+                    state_manager.stocks[symbol]["error"] = error_msg[:500]
+                    return None
+
+                is_rate_limit = "Too many requests" in error_msg or "429" in error_msg
+                
+                # Only log and emit if it's the final attempt OR it's not a rate limit error
+                if attempt == config.MAX_RETRIES or not is_rate_limit:
+                    log.warning(
+                        "Attempt %d/%d for %s [%s → %s] failed: %s",
+                        attempt, config.MAX_RETRIES, symbol,
+                        chunk_start, chunk_end, error_msg,
+                    )
+                    await self._emit("retry", {
+                        "symbol": symbol,
+                        "attempt": attempt,
+                        "max_retries": config.MAX_RETRIES,
+                        "error": error_msg[:200],
+                    })
 
                 if attempt < config.MAX_RETRIES:
                     jitter = random.uniform(0, delay * 0.3)

@@ -1,15 +1,16 @@
 import PyInstaller.__main__
 
-PyInstaller.__main__.run([
-    'start_app.py',
-    '--name=ArcherHarvest',
-    '--windowed',
-    '--onefile',
-    '--icon=Logo/Archer_Harvest_128X128.ico',
-    '--add-data=static;static',
-    '--add-data=Logo;Logo',
-    '--hidden-import=uvicorn.logging',
-    '--hidden-import=uvicorn.loops',
+if __name__ == '__main__':
+    PyInstaller.__main__.run([
+        'start_app.py',
+        '--name=ArcherHarvestApp',
+        '--windowed',
+        '--onefile',
+        '--icon=Logo/Archer_Harvest_256X256.ico',
+        '--add-data=static;static',
+        '--add-data=Logo;Logo',
+        '--hidden-import=uvicorn.logging',
+        '--hidden-import=uvicorn.loops',
     '--hidden-import=uvicorn.loops.auto',
     '--hidden-import=uvicorn.protocols',
     '--hidden-import=uvicorn.protocols.http',

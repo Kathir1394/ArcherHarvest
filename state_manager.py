@@ -26,6 +26,7 @@ class StockStatus(str, Enum):
 class StateManager:
     def __init__(self):
         self.stocks: dict[str, dict] = {}
+        self.active_symbols: set[str] = set()
         self.download_start_time: float | None = None
         self.download_end_time: float | None = None
         self._date_from: str | None = None
@@ -35,6 +36,7 @@ class StateManager:
 
     def initialize(self, symbols: list[str], date_from: str, date_to: str):
         """Set up state for a new download run, preserving completed entries."""
+        self.active_symbols = set(symbols)
         self._date_from = date_from
         self._date_to = date_to
         self.download_start_time = time.time()
@@ -43,15 +45,14 @@ class StateManager:
         self.completed_chunks = 0
 
         for sym in symbols:
-            if sym not in self.stocks or self.stocks[sym]["status"] != StockStatus.COMPLETED:
-                self.stocks[sym] = {
-                    "status": StockStatus.PENDING,
-                    "last_fetched_date": None,
-                    "candles_fetched": 0,
-                    "error": None,
-                    "retries": 0,
-                    "updated_at": datetime.now().isoformat(),
-                }
+            self.stocks[sym] = {
+                "status": StockStatus.PENDING,
+                "last_fetched_date": None,
+                "candles_fetched": 0,
+                "error": None,
+                "retries": 0,
+                "updated_at": datetime.now().isoformat(),
+            }
 
     def mark_in_progress(self, symbol: str):
         if symbol in self.stocks:
@@ -109,23 +110,25 @@ class StateManager:
         self._persist()
 
     def get_summary(self) -> dict:
-        total = len(self.stocks)
-        if total == 0:
+        if not self.active_symbols:
             return {
                 "total": 0, "pending": 0, "in_progress": 0,
                 "completed": 0, "failed": 0, "progress_pct": 0,
                 "total_candles": 0, "elapsed_sec": 0, "eta_sec": 0,
             }
 
+        total = len(self.active_symbols)
         counts = {"pending": 0, "in_progress": 0, "completed": 0, "failed": 0, "skipped": 0}
         total_candles = 0
-        for data in self.stocks.values():
-            counts[data["status"]] = counts.get(data["status"], 0) + 1
-            total_candles += data.get("candles_fetched", 0)
+        for sym in self.active_symbols:
+            if sym in self.stocks:
+                data = self.stocks[sym]
+                counts[data["status"]] = counts.get(data["status"], 0) + 1
+                total_candles += data.get("candles_fetched", 0)
 
         done = counts["completed"]
         if self.total_chunks > 0:
-            progress = (self.completed_chunks / self.total_chunks * 100)
+            progress = min(self.completed_chunks / self.total_chunks * 100, 100.0)
         else:
             progress = (done / total * 100) if total > 0 else 0
 
@@ -157,6 +160,7 @@ class StateManager:
         return [
             {"symbol": sym, **data}
             for sym, data in sorted(self.stocks.items())
+            if sym in self.active_symbols
         ]
 
     def _persist(self):

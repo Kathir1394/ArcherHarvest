@@ -173,7 +173,7 @@ class GlassDatePicker {
         }
 
         const totalCells = firstDay + daysInMonth;
-        const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+        const remaining = 42 - totalCells;
         for (let i = 1; i <= remaining; i++) {
             html += `<button class="dp-day dp-day--other-month" data-day="${i}" data-month="${month + 1}" data-year="${year}">${i}</button>`;
         }

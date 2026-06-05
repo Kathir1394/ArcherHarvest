@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['Logo\\Archer_Harvest_128X128.ico'],
+    icon=['Logo\\Archer_Harvest_256X256.ico'],
 )

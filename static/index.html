@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
     <link rel="stylesheet" href="/static/datepicker.css">
-    <link rel="icon" type="image/x-icon" href="/Logo/Archer_Harvest_128X128.ico">
+    <link rel="icon" type="image/x-icon" href="/Logo/Archer_Harvest_256X256.ico">
 </head>
 <body>
     <!-- Ambient background orbs -->
@@ -29,6 +29,9 @@
                 </div>
             </div>
             <div class="header-actions">
+                <div id="session-timer" class="session-timer" style="display: none;">
+                    ⏱️ Expires: <span id="session-timer-val">--:--:--</span>
+                </div>
                 <div id="auth-indicator" class="auth-badge auth-badge--disconnected">
                     <span class="auth-dot"></span>
                     <span id="auth-label">Not Connected</span>
@@ -123,7 +126,12 @@
                     </div>
                     <div class="ctrl-field ctrl-field--grow">
                         <span class="ctrl-label">Symbols <span class="ctrl-hint">(blank = all)</span></span>
-                        <input type="text" id="symbols-filter" placeholder="RELIANCE, TCS, INFY..." class="ctrl-input">
+                        <div class="symbol-autocomplete" id="symbol-autocomplete">
+                            <div class="symbol-tags" id="symbol-tags"></div>
+                            <input type="text" id="symbols-filter" placeholder="Type to search..." class="symbol-input" autocomplete="off">
+                            <div class="symbol-dropdown" id="symbol-dropdown"></div>
+                        </div>
+                        <input type="hidden" id="symbols-hidden" value="">
                     </div>
                 </div>
 
@@ -137,14 +145,15 @@
                             <label class="pill-btn"><input type="checkbox" name="segment" value="Future" onchange="toggleContinuousCheckbox()"><span>Future</span></label>
                             <label class="pill-btn"><input type="checkbox" name="segment" value="Option" onchange="toggleContinuousCheckbox()"><span>Option</span></label>
                             <label class="pill-btn"><input type="checkbox" name="segment" value="Commodity" onchange="toggleContinuousCheckbox()"><span>Commodity</span></label>
+                            <label class="pill-btn"><input type="checkbox" name="segment" value="ETF/MF" onchange="toggleContinuousCheckbox()"><span>ETF/MF</span></label>
                         </div>
                     </div>
                     <div class="ctrl-pill-group">
                         <span class="ctrl-label">Exchange</span>
                         <div class="pill-strip pill-strip--radio">
-                            <label class="pill-btn"><input type="radio" name="exchange-filter" value="NSE_BSE" checked><span>NSE + BSE</span></label>
-                            <label class="pill-btn"><input type="radio" name="exchange-filter" value="NSE_ONLY"><span>NSE Only</span></label>
-                            <label class="pill-btn"><input type="radio" name="exchange-filter" value="BSE_ONLY"><span>BSE Only</span></label>
+                            <label class="pill-btn"><input type="radio" name="exchange-filter" value="NSE_BSE" checked onchange="recalculateTotalStocks()"><span>NSE + BSE</span></label>
+                            <label class="pill-btn"><input type="radio" name="exchange-filter" value="NSE_ONLY" onchange="recalculateTotalStocks()"><span>NSE Only</span></label>
+                            <label class="pill-btn"><input type="radio" name="exchange-filter" value="BSE_ONLY" onchange="recalculateTotalStocks()"><span>BSE Only</span></label>
                         </div>
                     </div>
                     <div class="ctrl-pill-group ctrl-pill-group--toggle">
@@ -201,9 +210,11 @@
                             <span class="meta-label">Status</span>
                             <span class="meta-value" id="engine-status">Idle</span>
                         </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Current Stock</span>
-                            <span class="meta-value mono" id="current-stock">—</span>
+                        <div class="meta-item meta-item--active">
+                            <span class="meta-label">Active Downloads</span>
+                            <div class="active-badges" id="active-badges">
+                                <span class="meta-value mono">—</span>
+                            </div>
                         </div>
                         <div class="meta-item">
                             <span class="meta-label">Elapsed</span>
@@ -222,13 +233,13 @@
                 <!-- Stock Grid -->
                 <section class="panel stock-panel">
                     <div class="panel-header-row">
-                        <h2 class="panel-title">
+                        <h2 class="panel-title" id="grid-status-title">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="panel-icon">
                                 <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
                             </svg>
                             Stock Status
                         </h2>
-                        <input type="text" id="stock-search" placeholder="Search symbol..." class="input input--sm" oninput="filterStocks()">
+                        <input type="text" id="symbol-search" placeholder="Search symbol..." class="input input--sm" oninput="filterStocks()">
                     </div>
                     <div class="stock-grid-wrapper">
                         <div class="stock-grid" id="stock-grid">
@@ -246,13 +257,29 @@
                             </svg>
                             Activity Log
                         </h2>
-                        <button class="btn btn--ghost btn--sm" onclick="clearLog()">Clear</button>
+                        <div class="log-tabs">
+                            <button class="tab-btn active" id="tab-all" onclick="switchLogTab('all')">All Logs</button>
+                            <button class="tab-btn" id="tab-errors" onclick="switchLogTab('errors')">Errors</button>
+                        </div>
+                        <div class="header-actions">
+                            <button class="btn btn--ghost btn--sm" id="btn-copy-errors" style="display:none;" onclick="copyErrors()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                Copy
+                            </button>
+                            <button class="btn btn--ghost btn--sm" id="btn-dl-errors" style="display:none;" onclick="downloadErrors()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Download
+                            </button>
+                            <button class="btn btn--ghost btn--sm" onclick="clearLog()">Clear</button>
+                        </div>
                     </div>
                     <div class="log-container" id="log-container">
                         <div class="log-entry log-entry--info">
                             <span class="log-time">—</span>
                             <span class="log-msg">Waiting for connection...</span>
                         </div>
+                    </div>
+                    <div class="log-container" id="error-container" style="display:none;">
                     </div>
                 </section>
             </div>

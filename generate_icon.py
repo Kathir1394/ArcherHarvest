@@ -11,4 +11,4 @@ def generate_high_res_icon(png_path, ico_path):
         print(f"Error generating icon: {e}")
 
 if __name__ == "__main__":
-    generate_high_res_icon(r"Logo\Archer_Harvest_002.png", r"Logo\icon.ico")
+    generate_high_res_icon(r"Logo\Archer_Harvest_002.png", r"Logo\Archer_Harvest_256X256.ico")

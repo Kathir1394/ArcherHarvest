@@ -173,8 +173,8 @@ async def resume_download():
 @router.post("/download/stop")
 async def stop_download():
     fetcher_engine.stop()
-    await broadcast_event({"type": "status_change", "status": "stopped"})
-    return {"status": "stopped"}
+    await broadcast_event({"type": "status_change", "status": "stopping"})
+    return {"status": "stopping"}
 
 
 @router.post("/download/retry-failed")

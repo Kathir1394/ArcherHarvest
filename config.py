@@ -55,7 +55,7 @@ class Config:
     PORT: int = int(os.getenv("PORT", "8000"))
 
     # Kite rate-limit: 3 req/s → minimum safe interval = 0.334s
-    REQUEST_DELAY: float = float(os.getenv("REQUEST_DELAY", "0.334"))
+    REQUEST_DELAY: float = float(os.getenv("REQUEST_DELAY", "0.35"))
     CONCURRENT_WORKERS: int = int(os.getenv("CONCURRENT_WORKERS", "20"))
     MAX_RETRIES: int = int(os.getenv("MAX_RETRIES", "5"))
     RETRY_BASE_DELAY: float = float(os.getenv("RETRY_BASE_DELAY", "1.0"))

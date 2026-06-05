@@ -15,7 +15,10 @@ from config import config
 
 log = logging.getLogger(__name__)
 
+OHLCV_COLUMNS = ["symbol", "timestamp", "open", "high", "low", "close", "volume", "open_interest"]
+
 OHLCV_SCHEMA = pa.schema([
+    ("symbol", pa.string()),
     ("timestamp", pa.timestamp("s", tz="Asia/Kolkata")),
     ("open", pa.float64()),
     ("high", pa.float64()),
@@ -27,8 +30,32 @@ OHLCV_SCHEMA = pa.schema([
 
 
 def _symbol_dir(symbol: str) -> Path:
+    from instrument_loader import instrument_loader as loader
     safe_symbol = symbol.replace(":", "_")
-    d = config.DATA_DIR / safe_symbol
+    
+    inst = loader.get_by_symbol(symbol)
+    
+    if inst:
+        exchange = inst.get("exchange", "UNKNOWN")
+        ui_segment = inst.get("ui_segment", "UNKNOWN").upper()
+        if ui_segment == "EQUITY":
+            folder_name = f"{exchange} EQUITIES"
+        elif ui_segment == "INDEX":
+            folder_name = "INDEX"
+        elif ui_segment == "FUTURE":
+            folder_name = "FUTURES"
+        elif ui_segment == "OPTION":
+            folder_name = "OPTIONS"
+        elif ui_segment == "COMMODITY":
+            folder_name = "COMMODITIES"
+        elif ui_segment == "ETF/MF":
+            folder_name = "ETF_MF"
+        else:
+            folder_name = ui_segment
+    else:
+        folder_name = "UNKNOWN_SEGMENT"
+        
+    d = config.DATA_DIR / folder_name / safe_symbol
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -36,6 +63,11 @@ def _symbol_dir(symbol: str) -> Path:
 def _parquet_path(symbol: str, year: int) -> Path:
     safe_symbol = symbol.replace(":", "_")
     return _symbol_dir(symbol) / f"{safe_symbol}_{year}.parquet"
+
+
+def _extract_raw_symbol(symbol: str) -> str:
+    """Extract the trading symbol from 'NSE:RELIANCE' → 'RELIANCE'."""
+    return symbol.split(":", 1)[-1] if ":" in symbol else symbol
 
 
 def save_candles(symbol: str, candles: list[list]) -> int:
@@ -47,10 +79,12 @@ def save_candles(symbol: str, candles: list[list]) -> int:
     if not candles:
         return 0
 
+    raw_sym = _extract_raw_symbol(symbol)
     rows = []
     for c in candles:
         ts = c[0] if isinstance(c[0], datetime) else datetime.fromisoformat(str(c[0]))
         rows.append({
+            "symbol": raw_sym,
             "timestamp": ts,
             "open": float(c[1]),
             "high": float(c[2]),
@@ -70,6 +104,9 @@ def save_candles(symbol: str, candles: list[list]) -> int:
         if path.exists():
             try:
                 existing = pd.read_parquet(path)
+                # Backfill symbol column if missing from old data
+                if "symbol" not in existing.columns:
+                    existing.insert(0, "symbol", raw_sym)
                 combined = pd.concat([existing, year_df], ignore_index=True)
                 combined.drop_duplicates(subset=["timestamp"], keep="last", inplace=True)
                 combined.sort_values("timestamp", inplace=True)
@@ -144,20 +181,20 @@ def read_candles(symbol: str, year: int | None = None) -> pd.DataFrame:
     """Read stored candles for a symbol, optionally filtered by year."""
     sym_dir = _symbol_dir(symbol)
     if not sym_dir.exists():
-        return pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "volume", "open_interest"])
+        return pd.DataFrame(columns=OHLCV_COLUMNS)
 
     if year:
         path = _parquet_path(symbol, year)
         if path.exists():
             return pd.read_parquet(path)
-        return pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "volume", "open_interest"])
+        return pd.DataFrame(columns=OHLCV_COLUMNS)
 
     frames = []
     for p in sorted(sym_dir.glob(f"{symbol}_*.parquet")):
         frames.append(pd.read_parquet(p))
 
     if not frames:
-        return pd.DataFrame(columns=["timestamp", "open", "high", "low", "close", "volume", "open_interest"])
+        return pd.DataFrame(columns=OHLCV_COLUMNS)
     return pd.concat(frames, ignore_index=True).sort_values("timestamp").reset_index(drop=True)
 
 

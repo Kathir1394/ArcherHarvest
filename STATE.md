@@ -13,6 +13,11 @@
 - [x] Full backend architecture (FastAPI, auth, SSE, storage, API routes).
 - [x] Full frontend dashboard (glassmorphism UI, stats, progress bar, real-time activity log).
 - [x] Segment Filtering (Equity, Index, Future, Option, Commodity) and Exchange Filtering.
+- [x] Native integration with Kite API's continuous data feature for stitched near-month derivative contracts.
+- [x] Asynchronous multi-threaded worker engine (`fetcher_engine.py`) efficiently handling up to 20 concurrent tasks.
+- [x] Smart TokenBucket rate-limiting gracefully hiding 429 errors from the UI unless fatal.
+- [x] "Graceful Stop" mechanic that allows currently downloading tasks to write out Parquet files to prevent corruption.
+- [x] Enhanced Activity Log with dedicated "Errors" tab featuring clipboard and file export support.
 - [x] Continuous Futures data fetching support.
 - [x] High-precision chunked ETA calculation algorithm for realistic wait times.
 - [x] Retry logic with exponential backoff (5 retries, 1s→60s).

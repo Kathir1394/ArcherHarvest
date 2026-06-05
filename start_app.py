@@ -227,8 +227,10 @@ class ArcherHarvestLauncher(ctk.CTk):
             import ctypes
             myappid = 'archer.harvest.app.1.0'
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-            self.iconbitmap(str(PROJECT_DIR / "Logo" / "Archer_Harvest_128X128.ico"))
-        except Exception:
+            # Use iconbitmap with high-quality multi-size ICO.
+            # Coupled with DPI awareness (set in main), this ensures crisp taskbar icons.
+            self.iconbitmap(str(PROJECT_DIR / "Logo" / "Archer_Harvest_256X256.ico"))
+        except Exception as e:
             pass
         self.resizable(False, False)
         self.configure(fg_color=BG_DARK)
@@ -552,4 +554,12 @@ class ArcherHarvestLauncher(ctk.CTk):
 
 
 if __name__ == "__main__":
+    try:
+        import ctypes
+        import sys
+        if sys.platform == 'win32':
+            # Set DPI awareness to prevent blurry UI and blurry taskbar icons
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
     ArcherHarvestLauncher().mainloop()

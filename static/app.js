@@ -8,9 +8,13 @@ const API = '';  // same origin
 // ── State ──
 let sseSource = null;
 let isAuthenticated = false;
-let engineStatus = 'idle'; // idle | running | paused
+let engineStatus = 'idle'; // idle | running | paused | stopping
 let stockStates = {};
+let activeDownloads = new Set();
 let pollInterval = null;
+let instrumentList = [];  // cached instrument list for autocomplete
+let selectedSymbols = []; // tag chips
+let dropdownActiveIndex = -1;
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     connectSSE();
     startPolling();
     checkUrlParams();
+    initAutocomplete();
 });
 
 function setDefaultDates() {
@@ -72,28 +77,81 @@ async function checkAuth() {
         isAuthenticated = data.authenticated;
         updateAuthUI(data);
         if (data.instruments_loaded > 0) {
-            document.getElementById('stat-total-val').textContent = data.instruments_loaded.toLocaleString();
+            loadInstrumentList();
         }
     } catch (e) {
         console.error('Auth check failed:', e);
     }
 }
 
+let sessionTimerInterval;
+
+function getNextIST6AM() {
+    // Current time
+    const now = new Date();
+    // Convert to IST
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const istNow = new Date(utc + istOffset);
+    
+    // Create target time (6:00 AM IST)
+    const target = new Date(istNow);
+    target.setHours(6, 0, 0, 0);
+    
+    // If it's already past 6 AM IST today, set target to tomorrow 6 AM IST
+    if (istNow.getTime() >= target.getTime()) {
+        target.setDate(target.getDate() + 1);
+    }
+    
+    // Convert target back to local timezone time
+    return new Date(target.getTime() - istOffset - (now.getTimezoneOffset() * 60000));
+}
+
+function updateSessionTimer() {
+    const timerVal = document.getElementById('session-timer-val');
+    if (!isAuthenticated) return;
+    
+    const now = new Date();
+    const target = getNextIST6AM();
+    const diffMs = target - now;
+    
+    if (diffMs <= 0) {
+        timerVal.textContent = "Expired";
+        timerVal.style.color = "var(--error)";
+        return;
+    }
+    
+    const h = Math.floor(diffMs / (1000 * 60 * 60));
+    const m = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const s = Math.floor((diffMs % (1000 * 60)) / 1000);
+    
+    timerVal.textContent = `${h}h ${m}m ${s}s`;
+    timerVal.style.color = h < 1 ? "var(--warning)" : "var(--text)";
+}
+
 function updateAuthUI(data) {
     const badge = document.getElementById('auth-indicator');
     const label = document.getElementById('auth-label');
     const btn = document.getElementById('btn-auth');
+    const timerDiv = document.getElementById('session-timer');
+
+    if (sessionTimerInterval) clearInterval(sessionTimerInterval);
 
     if (data.authenticated) {
         badge.className = 'auth-badge auth-badge--connected';
         label.textContent = `${data.user_id} ✓`;
         btn.textContent = 'Disconnect';
         btn.className = 'btn btn--outline';
+        
+        timerDiv.style.display = 'flex';
+        updateSessionTimer();
+        sessionTimerInterval = setInterval(updateSessionTimer, 1000);
     } else {
         badge.className = 'auth-badge auth-badge--disconnected';
         label.textContent = 'Not Connected';
         btn.textContent = 'Connect Kite';
         btn.className = 'btn btn--primary';
+        timerDiv.style.display = 'none';
     }
 }
 
@@ -146,24 +204,31 @@ function handleSSEEvent(data) {
     switch (type) {
         case 'download_started':
             engineStatus = 'running';
+            activeDownloads.clear();
+            renderActiveBadges();
             updateControlButtons();
             addLog('info', `Download started: ${data.total_stocks} stocks [${data.date_from} → ${data.date_to}]`);
             break;
 
         case 'stock_started':
             updateStockChip(data.symbol, 'in_progress');
-            document.getElementById('current-stock').textContent = data.symbol;
+            activeDownloads.add(data.symbol);
+            renderActiveBadges();
             document.getElementById('stat-progress-val').textContent = data.index;
             addLog('progress', `Downloading ${data.symbol}... [${data.index}/${data.total}]`);
             break;
 
         case 'stock_completed':
             updateStockChip(data.symbol, 'completed');
+            activeDownloads.delete(data.symbol);
+            renderActiveBadges();
             addLog('success', `✓ ${data.symbol} — ${(data.candles || 0).toLocaleString()} candles`);
             break;
 
         case 'stock_failed':
             updateStockChip(data.symbol, 'failed');
+            activeDownloads.delete(data.symbol);
+            renderActiveBadges();
             addLog('error', `✗ ${data.symbol} — ${data.error}`);
             break;
 
@@ -177,19 +242,24 @@ function handleSSEEvent(data) {
 
         case 'download_finished':
             engineStatus = 'idle';
+            activeDownloads.clear();
+            renderActiveBadges();
             updateControlButtons();
             updateProgressFromSummary(data);
-            document.getElementById('current-stock').textContent = '—';
             addLog('info', `Download finished! ${data.completed}/${data.total} completed, ${data.failed} failed`);
             break;
 
         case 'status_change':
-            engineStatus = data.status === 'paused' ? 'paused' : (data.status === 'stopped' ? 'idle' : data.status);
+            engineStatus = data.status === 'paused' ? 'paused' : (data.status === 'stopped' || data.status === 'idle' ? 'idle' : data.status);
+            if (engineStatus === 'idle') activeDownloads.clear();
+            renderActiveBadges();
             updateControlButtons();
             addLog('info', `Engine status: ${data.status}`);
             break;
 
         case 'stock_error':
+            activeDownloads.delete(data.symbol);
+            renderActiveBadges();
             addLog('error', `${data.symbol}: ${data.error}`);
             break;
     }
@@ -229,7 +299,7 @@ async function startDownload() {
 
     const dateFrom = document.getElementById('date-from').value;
     const dateTo = document.getElementById('date-to').value;
-    const symbols = document.getElementById('symbols-filter').value.trim();
+    const symbols = selectedSymbols.join(',');
     const timeframe = document.getElementById('timeframe').value;
     const segmentCheckboxes = document.querySelectorAll('input[name="segment"]:checked');
     const segment = Array.from(segmentCheckboxes).map(cb => cb.value).join(',');
@@ -252,6 +322,8 @@ async function startDownload() {
             engineStatus = 'running';
             updateControlButtons();
             addLog('info', `Download queued: ${dateFrom} → ${dateTo}`);
+            const titleEl = document.getElementById('grid-status-title');
+            if (titleEl) titleEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="panel-icon"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>${segment || 'Selected'} Status`;
             loadStockGrid();
         } else {
             addLog('error', data.error || 'Failed to start download');
@@ -274,10 +346,9 @@ async function resumeDownload() {
 }
 
 async function stopDownload() {
-    await fetch(`${API}/api/download/stop`, { method: 'POST' });
-    engineStatus = 'idle';
+    engineStatus = 'stopping';
     updateControlButtons();
-    document.getElementById('current-stock').textContent = '—';
+    await fetch(`${API}/api/download/stop`, { method: 'POST' });
 }
 
 async function retryFailed() {
@@ -307,10 +378,10 @@ function updateControlButtons() {
     btnStart.disabled  = engineStatus !== 'idle';
     btnPause.disabled  = engineStatus !== 'running';
     btnResume.disabled = engineStatus !== 'paused';
-    btnStop.disabled   = engineStatus === 'idle';
+    btnStop.disabled   = engineStatus === 'idle' || engineStatus === 'stopping';
     btnRetry.disabled  = engineStatus !== 'idle';
 
-    document.getElementById('engine-status').textContent = capitalize(engineStatus);
+    document.getElementById('engine-status').textContent = engineStatus === 'stopping' ? 'Stopping...' : capitalize(engineStatus);
 }
 
 function toggleContinuousCheckbox() {
@@ -329,6 +400,38 @@ function toggleContinuousCheckbox() {
     // Also toggle grid clear visually
     const grid = document.getElementById('stock-grid');
     grid.innerHTML = '<div class="stock-grid-empty">Segment changed. Click Start Download to view stocks.</div>';
+    recalculateTotalStocks();
+}
+
+function recalculateTotalStocks() {
+    if (engineStatus !== 'idle') return; // Don't override while running
+    if (!instrumentList || instrumentList.length === 0) return;
+
+    const segmentCheckboxes = document.querySelectorAll('input[name="segment"]:checked');
+    const allowedSegments = Array.from(segmentCheckboxes).map(cb => cb.value);
+    const exchangeRadio = document.querySelector('input[name="exchange-filter"]:checked');
+    const exchangeFilter = exchangeRadio ? exchangeRadio.value : 'NSE_BSE';
+
+    let nseSymbols = new Set();
+    if (exchangeFilter === 'NSE_BSE') {
+        for (const i of instrumentList) {
+            if (i.exchange === 'NSE') nseSymbols.add(i.rawSymbol);
+        }
+    }
+
+    let total = 0;
+    for (const i of instrumentList) {
+        if (!allowedSegments.includes(i.uiSegment)) continue;
+        if (exchangeFilter === 'NSE_ONLY' && i.exchange === 'BSE') continue;
+        if (exchangeFilter === 'BSE_ONLY' && i.exchange === 'NSE') continue;
+        if (exchangeFilter === 'NSE_BSE' && i.exchange === 'BSE' && nseSymbols.has(i.rawSymbol)) continue;
+        total++;
+    }
+
+    document.getElementById('stat-total-val').textContent = total.toLocaleString();
+    document.getElementById('stat-completed-val').textContent = "0";
+    document.getElementById('stat-progress-val').textContent = "0";
+    document.getElementById('stat-failed-val').textContent = "0";
 }
 
 function toggleContinuousManual() {
@@ -345,7 +448,7 @@ function toggleContinuousManual() {
 function updateProgressFromSummary(summary) {
     if (!summary || summary.total === 0) return;
 
-    const pct = summary.progress_pct || 0;
+    const pct = Math.min(summary.progress_pct || 0, 100);
     document.getElementById('progress-bar').style.width = `${pct}%`;
     document.getElementById('progress-text').textContent = `${pct}%`;
 
@@ -434,6 +537,19 @@ function addLog(level, message) {
 
     container.appendChild(entry);
 
+    // Duplicate to error container if needed
+    if (level === 'error' || level === 'warning') {
+        const errContainer = document.getElementById('error-container');
+        if (errContainer) {
+            const errEntry = entry.cloneNode(true);
+            errContainer.appendChild(errEntry);
+            while (errContainer.children.length > MAX_LOG_ENTRIES) {
+                errContainer.removeChild(errContainer.firstChild);
+            }
+            errContainer.scrollTop = errContainer.scrollHeight;
+        }
+    }
+
     // Trim old entries
     while (container.children.length > MAX_LOG_ENTRIES) {
         container.removeChild(container.firstChild);
@@ -446,6 +562,8 @@ function addLog(level, message) {
 function clearLog() {
     const container = document.getElementById('log-container');
     container.innerHTML = '';
+    const errContainer = document.getElementById('error-container');
+    if (errContainer) errContainer.innerHTML = '';
     addLog('info', 'Log cleared');
 }
 
@@ -467,4 +585,206 @@ function escapeHTML(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+// ── Instrument List for Autocomplete ──
+async function loadInstrumentList() {
+    try {
+        const resp = await fetch(`${API}/api/instruments`);
+        const data = await resp.json();
+        instrumentList = (data.instruments || []).map(i => ({
+            symbol: i.symbol,
+            rawSymbol: i.raw_symbol,
+            exchange: i.exchange,
+            name: i.name || '',
+            segment: i.segment || '',
+            uiSegment: i.ui_segment || '',
+        }));
+        recalculateTotalStocks();
+    } catch (e) {
+        console.warn('Failed to load instruments:', e);
+    }
+}
+
+// ── Dynamic Badges ──
+function renderActiveBadges() {
+    const container = document.getElementById('active-badges');
+    if (!container) return;
+    if (activeDownloads.size === 0) {
+        container.innerHTML = '<span class="meta-value mono">—</span>';
+        return;
+    }
+    const html = Array.from(activeDownloads).map(sym => 
+        `<span class="active-badge">${sym}</span>`
+    ).join('');
+    container.innerHTML = html;
+}
+
+// ── Log Tabs ──
+function switchLogTab(tabId) {
+    document.getElementById('tab-all').classList.toggle('active', tabId === 'all');
+    document.getElementById('tab-errors').classList.toggle('active', tabId === 'errors');
+    
+    document.getElementById('log-container').style.display = tabId === 'all' ? 'flex' : 'none';
+    document.getElementById('error-container').style.display = tabId === 'errors' ? 'flex' : 'none';
+    
+    const showErrActions = tabId === 'errors' ? 'flex' : 'none';
+    document.getElementById('btn-copy-errors').style.display = showErrActions;
+    document.getElementById('btn-dl-errors').style.display = showErrActions;
+}
+
+function copyErrors() {
+    const errContainer = document.getElementById('error-container');
+    if (!errContainer) return;
+    const text = Array.from(errContainer.querySelectorAll('.log-entry')).map(el => {
+        return el.querySelector('.log-time').textContent + ' ' + el.querySelector('.log-msg').textContent;
+    }).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+        addLog('info', 'Errors copied to clipboard');
+    });
+}
+
+function downloadErrors() {
+    const errContainer = document.getElementById('error-container');
+    if (!errContainer) return;
+    const text = Array.from(errContainer.querySelectorAll('.log-entry')).map(el => {
+        return el.querySelector('.log-time').textContent + ' ' + el.querySelector('.log-msg').textContent;
+    }).join('\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `archer_errors_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ── Autocomplete ──
+function initAutocomplete() {
+    const input = document.getElementById('symbols-filter');
+    const dropdown = document.getElementById('symbol-dropdown');
+    const container = document.getElementById('symbol-autocomplete');
+
+    input.addEventListener('input', () => {
+        const query = input.value.trim().toUpperCase();
+        dropdownActiveIndex = -1;
+        if (query.length < 1) {
+            dropdown.classList.remove('active');
+            return;
+        }
+        const matches = instrumentList.filter(i =>
+            !selectedSymbols.includes(i.rawSymbol) &&
+            (i.rawSymbol.toUpperCase().includes(query) ||
+             i.name.toUpperCase().includes(query))
+        ).sort((a, b) => {
+            const aSym = a.rawSymbol.toUpperCase();
+            const bSym = b.rawSymbol.toUpperCase();
+            
+            // 1. Exact symbol match
+            if (aSym === query && bSym !== query) return -1;
+            if (bSym === query && aSym !== query) return 1;
+            
+            // 2. Starts with symbol
+            const aStarts = aSym.startsWith(query);
+            const bStarts = bSym.startsWith(query);
+            if (aStarts && !bStarts) return -1;
+            if (bStarts && !aStarts) return 1;
+            
+            // 3. Demote ETF/MF
+            const aIsMF = a.uiSegment === 'ETF/MF';
+            const bIsMF = b.uiSegment === 'ETF/MF';
+            if (!aIsMF && bIsMF) return -1;
+            if (aIsMF && !bIsMF) return 1;
+            
+            return aSym.localeCompare(bSym);
+        }).slice(0, 15);
+
+        if (matches.length === 0) {
+            dropdown.classList.remove('active');
+            return;
+        }
+
+        dropdown.innerHTML = matches.map((m, idx) => `
+            <div class="symbol-dropdown-item" data-symbol="${m.rawSymbol}" data-full="${m.symbol}" data-idx="${idx}">
+                <span>
+                    <span class="symbol-dropdown-item__symbol">${m.rawSymbol}</span>
+                    <span class="symbol-dropdown-item__exchange">${m.exchange}</span>
+                </span>
+                <span class="symbol-dropdown-item__name">${escapeHTML(m.name)}</span>
+            </div>
+        `).join('');
+        dropdown.classList.add('active');
+
+        dropdown.querySelectorAll('.symbol-dropdown-item').forEach(item => {
+            item.addEventListener('click', () => {
+                addSymbolTag(item.dataset.symbol);
+                input.value = '';
+                dropdown.classList.remove('active');
+                input.focus();
+            });
+        });
+    });
+
+    input.addEventListener('keydown', (e) => {
+        const items = dropdown.querySelectorAll('.symbol-dropdown-item');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            dropdownActiveIndex = Math.min(dropdownActiveIndex + 1, items.length - 1);
+            updateDropdownHighlight(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            dropdownActiveIndex = Math.max(dropdownActiveIndex - 1, 0);
+            updateDropdownHighlight(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (dropdownActiveIndex >= 0 && items[dropdownActiveIndex]) {
+                addSymbolTag(items[dropdownActiveIndex].dataset.symbol);
+                input.value = '';
+                dropdown.classList.remove('active');
+            }
+        } else if (e.key === 'Backspace' && input.value === '' && selectedSymbols.length > 0) {
+            removeSymbolTag(selectedSymbols[selectedSymbols.length - 1]);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+            dropdown.classList.remove('active');
+        }
+    });
+
+    container.addEventListener('click', () => {
+        input.focus();
+    });
+}
+
+function updateDropdownHighlight(items) {
+    items.forEach((item, idx) => {
+        item.classList.toggle('active', idx === dropdownActiveIndex);
+    });
+    if (items[dropdownActiveIndex]) {
+        items[dropdownActiveIndex].scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function addSymbolTag(rawSymbol) {
+    if (selectedSymbols.includes(rawSymbol)) return;
+    selectedSymbols.push(rawSymbol);
+    renderTags();
+}
+
+function removeSymbolTag(rawSymbol) {
+    selectedSymbols = selectedSymbols.filter(s => s !== rawSymbol);
+    renderTags();
+}
+
+function renderTags() {
+    const container = document.getElementById('symbol-tags');
+    container.innerHTML = selectedSymbols.map(sym => `
+        <span class="symbol-tag">
+            ${sym}
+            <button class="symbol-tag__remove" onclick="removeSymbolTag('${sym}')" title="Remove">&times;</button>
+        </span>
+    `).join('');
+    document.getElementById('symbols-hidden').value = selectedSymbols.join(',');
 }
