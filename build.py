@@ -5,7 +5,7 @@ PyInstaller.__main__.run([
     '--name=ArcherHarvest',
     '--windowed',
     '--onefile',
-    '--icon=Logo/icon.ico',
+    '--icon=Logo/Archer_Harvest_128X128.ico',
     '--add-data=static;static',
     '--add-data=Logo;Logo',
     '--hidden-import=uvicorn.logging',

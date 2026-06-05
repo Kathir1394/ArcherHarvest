@@ -22,6 +22,14 @@ else:
 os.chdir(PROJECT_DIR)
 sys.path.insert(0, str(PROJECT_DIR))
 
+# Enable High-DPI awareness on Windows before UI loads
+if os.name == 'nt':
+    try:
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
+
 import customtkinter as ctk
 
 ctk.set_appearance_mode("dark")
@@ -216,7 +224,10 @@ class ArcherHarvestLauncher(ctk.CTk):
         self.title("Archer Harvest")
         self.geometry(f"{WIN_W}x{WIN_H}")
         try:
-            self.iconbitmap(str(PROJECT_DIR / "Logo" / "icon.ico"))
+            import ctypes
+            myappid = 'archer.harvest.app.1.0'
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            self.iconbitmap(str(PROJECT_DIR / "Logo" / "Archer_Harvest_128X128.ico"))
         except Exception:
             pass
         self.resizable(False, False)

@@ -75,6 +75,7 @@ app.include_router(router)
 
 # Serve frontend static files
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
+app.mount("/Logo", StaticFiles(directory=str(APP_DIR / "Logo")), name="Logo")
 
 
 @app.get("/")

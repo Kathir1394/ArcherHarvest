@@ -23,10 +23,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function setDefaultDates() {
     const today = new Date();
-    document.getElementById('date-to').value = today.toISOString().split('T')[0];
     const fiveYearsAgo = new Date(today);
     fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
-    document.getElementById('date-from').value = fiveYearsAgo.toISOString().split('T')[0];
+
+    const formatISO = (d) => {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        return `${d.getFullYear()}-${mm}-${dd}`;
+    };
+    const formatDisplay = (d) => {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        return `${dd}-${mm}-${d.getFullYear()}`;
+    };
+
+    document.getElementById('date-from').value = formatISO(fiveYearsAgo);
+    document.getElementById('date-to').value = formatISO(today);
+
+    // Update display text for custom date picker triggers
+    const wrappers = document.querySelectorAll('[data-datepicker]');
+    if (wrappers.length >= 2) {
+        const fromText = wrappers[0].querySelector('.date-display__text');
+        const toText = wrappers[1].querySelector('.date-display__text');
+        if (fromText) fromText.textContent = formatDisplay(fiveYearsAgo);
+        if (toText) toText.textContent = formatDisplay(today);
+    }
 }
 
 function checkUrlParams() {
@@ -133,6 +154,7 @@ function handleSSEEvent(data) {
             updateStockChip(data.symbol, 'in_progress');
             document.getElementById('current-stock').textContent = data.symbol;
             document.getElementById('stat-progress-val').textContent = data.index;
+            addLog('progress', `Downloading ${data.symbol}... [${data.index}/${data.total}]`);
             break;
 
         case 'stock_completed':

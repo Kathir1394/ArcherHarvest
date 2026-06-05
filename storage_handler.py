@@ -21,8 +21,8 @@ OHLCV_SCHEMA = pa.schema([
     ("high", pa.float64()),
     ("low", pa.float64()),
     ("close", pa.float64()),
-    ("volume", pa.int64()),
-    ("open_interest", pa.int64()),
+    ("volume", pa.float64()),
+    ("open_interest", pa.float64()),
 ])
 
 
@@ -56,8 +56,8 @@ def save_candles(symbol: str, candles: list[list]) -> int:
             "high": float(c[2]),
             "low": float(c[3]),
             "close": float(c[4]),
-            "volume": int(c[5]),
-            "open_interest": int(c[6]) if len(c) > 6 else 0,
+            "volume": float(c[5]),
+            "open_interest": float(c[6]) if len(c) > 6 else 0.0,
         })
 
     new_df = pd.DataFrame(rows)
@@ -68,10 +68,17 @@ def save_candles(symbol: str, candles: list[list]) -> int:
         path = _parquet_path(symbol, int(year))
 
         if path.exists():
-            existing = pd.read_parquet(path)
-            combined = pd.concat([existing, year_df], ignore_index=True)
-            combined.drop_duplicates(subset=["timestamp"], keep="last", inplace=True)
-            combined.sort_values("timestamp", inplace=True)
+            try:
+                existing = pd.read_parquet(path)
+                combined = pd.concat([existing, year_df], ignore_index=True)
+                combined.drop_duplicates(subset=["timestamp"], keep="last", inplace=True)
+                combined.sort_values("timestamp", inplace=True)
+            except Exception as e:
+                log.error("Corrupted parquet file detected at %s: %s. Backing up and rewriting.", path.name, e)
+                backup_path = path.with_suffix(".parquet.corrupted")
+                if backup_path.exists(): backup_path.unlink()
+                path.rename(backup_path)
+                combined = year_df.sort_values("timestamp")
         else:
             combined = year_df.sort_values("timestamp")
 

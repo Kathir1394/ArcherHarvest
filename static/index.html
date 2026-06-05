@@ -9,6 +9,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/datepicker.css">
+    <link rel="icon" type="image/x-icon" href="/Logo/Archer_Harvest_128X128.ico">
 </head>
 <body>
     <!-- Ambient background orbs -->
@@ -20,7 +22,7 @@
         <!-- Header -->
         <header class="app-header">
             <div class="header-brand">
-                <img src="/static/logo.png" alt="Archer Harvest" class="brand-logo">
+                <img src="/Logo/Archer_Harvest_002.png" alt="Archer Harvest" class="brand-logo">
                 <div>
                     <h1>Archer Harvest</h1>
                     <p class="header-subtitle">Market Data Downloader</p>
@@ -81,11 +83,31 @@
                 <div class="ctrl-row">
                     <div class="ctrl-field">
                         <span class="ctrl-label">From</span>
-                        <input type="date" id="date-from" value="2020-01-01" class="ctrl-input">
+                        <div class="date-input-wrapper" data-datepicker>
+                            <div class="date-display">
+                                <svg class="date-display__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                                <span class="date-display__text">01-01-2021</span>
+                            </div>
+                            <input type="hidden" id="date-from" value="2021-01-01">
+                        </div>
                     </div>
                     <div class="ctrl-field">
                         <span class="ctrl-label">To</span>
-                        <input type="date" id="date-to" class="ctrl-input">
+                        <div class="date-input-wrapper" data-datepicker>
+                            <div class="date-display">
+                                <svg class="date-display__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                                <span class="date-display__text">Select date</span>
+                            </div>
+                            <input type="hidden" id="date-to" value="">
+                        </div>
                     </div>
                     <div class="ctrl-field">
                         <span class="ctrl-label">Timeframe</span>
@@ -237,6 +259,7 @@
         </main>
     </div>
 
+    <script src="/static/datepicker.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>

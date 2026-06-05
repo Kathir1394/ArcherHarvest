@@ -2,15 +2,20 @@
 Core download engine.
 Iterates over stocks × date-chunks, respects rate limits,
 implements retry with exponential backoff, and supports pause/resume.
+Supports multiple API keys for parallel rate-limit scaling.
 """
 
 import asyncio
 import logging
+import math
 import random
 import time
-from datetime import date, datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date, timedelta
 from typing import Callable, Awaitable
 
+import aiohttp
+import orjson
 from kiteconnect import KiteConnect
 
 from config import config
@@ -24,11 +29,36 @@ log = logging.getLogger(__name__)
 
 EventCallback = Callable[[dict], Awaitable[None]]
 
+_SENTINEL = None  # Poison pill for queue termination
+
+
+class _TokenBucket:
+    """Async token bucket: releases one token every `interval` seconds.
+    Workers acquire a scheduled slot, then sleep OUTSIDE the lock
+    so their API calls overlap freely.
+    """
+    def __init__(self, interval: float):
+        self._interval = interval
+        self._lock = asyncio.Lock()
+        self._next_time: float = 0.0
+
+    async def acquire(self):
+        async with self._lock:
+            now = asyncio.get_event_loop().time()
+            if self._next_time <= now:
+                self._next_time = now + self._interval
+                wait = 0.0
+            else:
+                wait = self._next_time - now
+                self._next_time += self._interval
+        if wait > 0:
+            await asyncio.sleep(wait)
+
 
 class FetcherEngine:
     def __init__(self):
         self._pause_event = asyncio.Event()
-        self._pause_event.set()  # starts unpaused
+        self._pause_event.set()
         self._cancel_flag = False
         self._running = False
         self._task: asyncio.Task | None = None
@@ -104,7 +134,7 @@ class FetcherEngine:
 
     def stop(self):
         self._cancel_flag = True
-        self._pause_event.set()  # unblock if paused so loop can exit
+        self._pause_event.set()
         if self._task and not self._task.done():
             self._task.cancel()
         log.info("Download stop requested")
@@ -151,7 +181,6 @@ class FetcherEngine:
     ):
         start_d = date.fromisoformat(date_from)
         end_d = date.fromisoformat(date_to)
-        kite: KiteConnect = auth_manager.kite
         total = len(symbols)
 
         await self._emit("download_started", {
@@ -160,37 +189,110 @@ class FetcherEngine:
             "date_to": date_to,
         })
 
-        queue = asyncio.Queue()
+        chunk_days = config.CHUNK_DAYS
+        if timeframe == "day":
+            chunk_days = 2000
+        elif timeframe in ("5minute", "10minute", "15minute"):
+            chunk_days = 100
+        est_chunks_per_stock = max(1, math.ceil((end_d - start_d).days / chunk_days))
+        state_manager.set_total_chunks(total * est_chunks_per_stock)
+
+        queue: asyncio.Queue = asyncio.Queue()
         for idx, symbol in enumerate(symbols):
             queue.put_nowait((idx, symbol))
 
-        self._rate_limit_lock = asyncio.Lock()
+        all_kites = auth_manager.get_all_kites()
+        num_keys = len(all_kites)
+
+        buckets = [_TokenBucket(config.REQUEST_DELAY) for _ in range(num_keys)]
+
+        workers_per_key = config.CONCURRENT_WORKERS
+        total_workers = workers_per_key * num_keys
+        # We still need an executor for save_candles (Parquet I/O)
+        executor = ThreadPoolExecutor(max_workers=4)
+        loop = asyncio.get_event_loop()
+
+        log.info(
+            "Starting AIOHTTP download: %d stocks, %d API key(s), %d workers, %.3fs delay",
+            total, num_keys, total_workers, config.REQUEST_DELAY,
+        )
+
+        for _ in range(total_workers):
+            queue.put_nowait(_SENTINEL)
+
         self._completed_count = 0
         self._total_count = total
 
-        workers = [
-            asyncio.create_task(
-                self._worker_task(queue, start_d, end_d, timeframe, continuous, kite)
+        # Create one aiohttp.ClientSession per API key
+        tcp_connector = aiohttp.TCPConnector(limit=total_workers)
+        sessions = [
+            aiohttp.ClientSession(
+                connector=tcp_connector if i == 0 else aiohttp.TCPConnector(limit=total_workers),
+                json_serialize=lambda x: orjson.dumps(x).decode(),
             )
-            for _ in range(config.CONCURRENT_WORKERS)
+            for i in range(num_keys)
         ]
 
-        await asyncio.gather(*workers)
+        try:
+            workers = []
+            for key_idx in range(num_keys):
+                kite = all_kites[key_idx]
+                bucket = buckets[key_idx]
+                session = sessions[key_idx]
+                
+                # Pre-compute headers for this API key
+                headers = {
+                    "X-Kite-Version": "3",
+                    "Authorization": f"token {kite.api_key}:{kite.access_token}",
+                    "User-Agent": "Kiteconnect-python/5.0.1"
+                }
+
+                for _ in range(workers_per_key):
+                    workers.append(
+                        asyncio.create_task(
+                            self._worker_task(
+                                queue, start_d, end_d, timeframe, continuous,
+                                session, headers, bucket, executor, loop,
+                            )
+                        )
+                    )
+
+            await asyncio.gather(*workers)
+        finally:
+            # Clean up all sessions
+            for session in sessions:
+                await session.close()
+            executor.shutdown(wait=False)
 
         state_manager.download_end_time = time.time()
         state_manager._persist()
         await self._emit("download_finished", state_manager.get_summary())
         log.info("Download loop finished")
 
-    async def _worker_task(self, queue: asyncio.Queue, start_d: date, end_d: date, timeframe: str, continuous: bool, kite: KiteConnect):
-        while not queue.empty():
+    async def _worker_task(
+        self,
+        queue: asyncio.Queue,
+        start_d: date,
+        end_d: date,
+        timeframe: str,
+        continuous: bool,
+        session: aiohttp.ClientSession,
+        headers: dict,
+        bucket: _TokenBucket,
+        executor: ThreadPoolExecutor,
+        loop: asyncio.AbstractEventLoop,
+    ):
+        while True:
             if self._cancel_flag:
                 break
             await self._pause_event.wait()
             if self._cancel_flag:
                 break
 
-            idx, symbol = queue.get_nowait()
+            item = await queue.get()
+            if item is _SENTINEL:
+                break
+            idx, symbol = item
 
             try:
                 entry = state_manager.stocks.get(symbol, {})
@@ -226,16 +328,19 @@ class FetcherEngine:
                     state_manager.mark_completed(symbol, 0)
                     await self._emit("stock_completed", {"symbol": symbol, "candles": 0})
                     continue
-                    
+
                 dl_min, dl_max = get_downloaded_date_range(symbol)
 
                 chunk_days = config.CHUNK_DAYS
-                if timeframe == "day": chunk_days = 2000
-                elif timeframe in ("5minute", "10minute", "15minute"): chunk_days = 100
-                
+                if timeframe == "day":
+                    chunk_days = 2000
+                elif timeframe in ("5minute", "10minute", "15minute"):
+                    chunk_days = 100
+
                 chunks = generate_date_chunks(effective_start, end_d, chunk_days)
                 symbol_candles = 0
                 symbol_failed = False
+                all_symbol_candles = []
 
                 for chunk_start, chunk_end in chunks:
                     if self._cancel_flag:
@@ -243,14 +348,15 @@ class FetcherEngine:
                     await self._pause_event.wait()
                     if self._cancel_flag:
                         break
-                        
+
                     if dl_min and dl_max and chunk_start >= dl_min and chunk_end <= dl_max:
-                        log.info("Smart sync: Skipping %s [%s → %s] (already downloaded)", symbol, chunk_start, chunk_end)
                         state_manager.update_progress(symbol, chunk_end.isoformat(), 0)
+                        state_manager.increment_chunk()
                         continue
 
                     candles = await self._fetch_chunk_with_retry(
-                        kite, token, symbol, chunk_start, chunk_end, timeframe, continuous
+                        session, headers, token, symbol, chunk_start, chunk_end,
+                        timeframe, continuous, bucket
                     )
 
                     if candles is None:
@@ -258,11 +364,20 @@ class FetcherEngine:
                         break
 
                     if candles:
-                        written = save_candles(symbol, candles)
+                        all_symbol_candles.extend(candles)
                         symbol_candles += len(candles)
                         state_manager.update_progress(
                             symbol, chunk_end.isoformat(), len(candles)
                         )
+                    state_manager.increment_chunk()
+
+                    if state_manager.completed_chunks % 10 == 0:
+                        await self._emit("progress_update", state_manager.get_summary())
+
+                if all_symbol_candles:
+                    await loop.run_in_executor(
+                        executor, save_candles, symbol, all_symbol_candles
+                    )
 
                 if self._cancel_flag:
                     break
@@ -287,48 +402,57 @@ class FetcherEngine:
                 if self._completed_count % 10 == 0 or self._completed_count == self._total_count:
                     await self._emit("progress_update", state_manager.get_summary())
 
-            finally:
-                queue.task_done()
+            except Exception as exc:
+                log.error("Unhandled exception for %s: %s", symbol, exc, exc_info=True)
+                state_manager.mark_failed(symbol, str(exc))
+                await self._emit("stock_error", {"symbol": symbol, "error": str(exc)})
 
     async def _fetch_chunk_with_retry(
         self,
-        kite: KiteConnect,
+        session: aiohttp.ClientSession,
+        headers: dict,
         token: int,
         symbol: str,
         chunk_start: date,
         chunk_end: date,
         timeframe: str,
-        continuous: bool = False,
+        continuous: bool,
+        bucket: _TokenBucket,
     ) -> list | None:
-        """
-        Fetch a single date chunk with exponential backoff retry.
-        Returns candle list on success, None on exhausted retries.
-        """
         delay = config.RETRY_BASE_DELAY
+        url = f"https://api.kite.trade/instruments/historical/{token}/{timeframe}"
+        
+        params = {
+            "from": chunk_start.strftime("%Y-%m-%d %H:%M:%S"),
+            "to": chunk_end.strftime("%Y-%m-%d %H:%M:%S"),
+            "continuous": "1" if continuous else "0",
+            "oi": "1"
+        }
+
         for attempt in range(1, config.MAX_RETRIES + 1):
             try:
-                # Global rate limit lock across all workers
-                async with self._rate_limit_lock:
-                    await asyncio.sleep(config.REQUEST_DELAY)
+                await bucket.acquire()
 
-                candles = await asyncio.to_thread(
-                    kite.historical_data,
-                    token,
-                    chunk_start,
-                    chunk_end,
-                    timeframe,
-                    continuous=continuous,
-                    oi=True,
-                )
+                async with session.get(url, headers=headers, params=params) as resp:
+                    resp_text = await resp.text()
+                    
+                    if resp.status != 200:
+                        raise Exception(f"HTTP {resp.status}: {resp_text}")
+                    
+                    # Ultra-fast GIL-free JSON parsing
+                    data = orjson.loads(resp_text)
+                    
+                    if data.get("status") == "error":
+                        raise Exception(data.get("message", "Unknown API Error"))
+                    
+                    raw_candles = data.get("data", {}).get("candles", [])
+                    
+                    candles = []
+                    for c in raw_candles:
+                        # [date, open, high, low, close, volume, oi]
+                        candles.append([c[0], c[1], c[2], c[3], c[4], c[5], c[6] if len(c) > 6 else 0])
 
-                # Convert dict rows to lists if needed
-                if candles and isinstance(candles[0], dict):
-                    candles = [
-                        [c["date"], c["open"], c["high"], c["low"], c["close"], c["volume"], c.get("oi", 0)]
-                        for c in candles
-                    ]
-
-                return candles
+                    return candles
 
             except Exception as exc:
                 error_msg = str(exc)

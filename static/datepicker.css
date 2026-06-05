@@ -1,0 +1,374 @@
+/* ═══════════════════════════════════════════════════
+   Custom Date Picker — Glassmorphism Dark Theme
+   ═══════════════════════════════════════════════════ */
+
+/* ── Date Input Trigger ── */
+.date-input-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.date-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: hsla(225, 25%, 9%, 0.8);
+    border: 1px solid hsla(220, 30%, 25%, 0.4);
+    border-radius: 8px;
+    color: hsl(220, 20%, 92%);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.84rem;
+    cursor: pointer;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+    user-select: none;
+    min-width: 140px;
+}
+
+.date-display:hover {
+    border-color: hsla(185, 60%, 50%, 0.5);
+}
+
+.date-display.active {
+    border-color: hsl(185, 95%, 55%);
+    box-shadow: 0 0 0 3px hsla(185, 95%, 55%, 0.08);
+}
+
+.date-display__icon {
+    width: 16px;
+    height: 16px;
+    color: hsl(185, 95%, 55%);
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+.date-display__text {
+    flex: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Picker Dropdown ── */
+.dp-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+}
+
+.dp-container {
+    position: absolute;
+    z-index: 9999;
+    width: 310px;
+    background: hsla(225, 22%, 10%, 0.92);
+    border: 1px solid hsla(220, 40%, 30%, 0.35);
+    border-radius: 14px;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow:
+        0 8px 40px hsla(0, 0%, 0%, 0.5),
+        0 0 1px hsla(185, 95%, 55%, 0.2),
+        inset 0 1px 0 hsla(220, 40%, 50%, 0.08);
+    padding: 16px;
+    animation: dp-enter 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    font-family: 'Inter', sans-serif;
+}
+
+@keyframes dp-enter {
+    from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Header: Month/Year + Nav ── */
+.dp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding: 0 2px;
+}
+
+.dp-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: hsl(220, 20%, 92%);
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid hsla(220, 30%, 25%, 0.3);
+    background: hsla(225, 20%, 14%, 0.6);
+    transition: all 150ms ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+}
+
+.dp-title::after {
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid hsl(185, 95%, 55%);
+    opacity: 0.7;
+    transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.dp-title:hover {
+    background: hsla(185, 50%, 35%, 0.2);
+    border-color: hsla(185, 60%, 50%, 0.4);
+    color: hsl(185, 95%, 65%);
+}
+
+.dp-title:hover::after {
+    opacity: 1;
+}
+
+.dp-title:active {
+    transform: scale(0.97);
+}
+
+.dp-nav {
+    display: flex;
+    gap: 4px;
+}
+
+.dp-nav-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid hsla(220, 30%, 25%, 0.3);
+    border-radius: 8px;
+    background: hsla(225, 20%, 14%, 0.6);
+    color: hsl(220, 15%, 65%);
+    cursor: pointer;
+    transition: all 150ms ease;
+    padding: 0;
+    font-size: 0;
+}
+
+.dp-nav-btn:hover {
+    background: hsla(185, 50%, 35%, 0.2);
+    border-color: hsla(185, 60%, 50%, 0.4);
+    color: hsl(185, 95%, 55%);
+}
+
+.dp-nav-btn svg {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2.5;
+}
+
+/* ── Weekday Headers ── */
+.dp-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 6px;
+}
+
+.dp-weekday {
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: hsl(220, 15%, 45%);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 0;
+}
+
+/* ── Day Grid ── */
+.dp-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.dp-day {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: hsl(220, 15%, 70%);
+    cursor: pointer;
+    transition: all 150ms ease;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+.dp-day:hover:not(.dp-day--disabled):not(.dp-day--empty) {
+    background: hsla(185, 50%, 40%, 0.12);
+    border-color: hsla(185, 60%, 50%, 0.25);
+    color: hsl(220, 20%, 92%);
+}
+
+.dp-day--today {
+    color: hsl(185, 95%, 55%);
+    font-weight: 700;
+    border-color: hsla(185, 60%, 50%, 0.3);
+}
+
+.dp-day--selected {
+    background: linear-gradient(135deg, hsla(185, 80%, 45%, 0.3), hsla(265, 70%, 55%, 0.15)) !important;
+    border-color: hsl(185, 95%, 55%) !important;
+    color: hsl(185, 95%, 65%) !important;
+    font-weight: 700;
+    box-shadow: 0 0 12px hsla(185, 95%, 55%, 0.15);
+}
+
+.dp-day--other-month {
+    color: hsl(220, 10%, 30%);
+}
+
+.dp-day--other-month:hover {
+    color: hsl(220, 10%, 50%);
+}
+
+.dp-day--disabled {
+    color: hsl(220, 10%, 22%);
+    cursor: not-allowed;
+}
+
+.dp-day--empty {
+    cursor: default;
+}
+
+/* ── Footer ── */
+.dp-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid hsla(220, 30%, 25%, 0.2);
+}
+
+.dp-footer-btn {
+    padding: 5px 14px;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 150ms ease;
+    background: transparent;
+}
+
+.dp-footer-btn--clear {
+    color: hsl(220, 15%, 55%);
+}
+.dp-footer-btn--clear:hover {
+    color: hsl(0, 85%, 60%);
+    background: hsla(0, 70%, 45%, 0.1);
+}
+
+.dp-footer-btn--today {
+    color: hsl(185, 95%, 55%);
+}
+.dp-footer-btn--today:hover {
+    background: hsla(185, 50%, 40%, 0.15);
+}
+
+/* ── Year Picker View ── */
+.dp-year-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: hsla(220, 20%, 30%, 0.5) transparent;
+}
+
+.dp-year-grid::-webkit-scrollbar { width: 4px; }
+.dp-year-grid::-webkit-scrollbar-track { background: transparent; }
+.dp-year-grid::-webkit-scrollbar-thumb {
+    background: hsla(220, 20%, 35%, 0.5);
+    border-radius: 999px;
+}
+
+.dp-year-btn {
+    padding: 8px 4px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: hsl(220, 15%, 65%);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms ease;
+    text-align: center;
+}
+
+.dp-year-btn:hover {
+    background: hsla(185, 50%, 40%, 0.12);
+    border-color: hsla(185, 60%, 50%, 0.25);
+    color: hsl(220, 20%, 92%);
+}
+
+.dp-year-btn--current {
+    border-color: hsla(185, 60%, 50%, 0.3);
+    color: hsl(185, 95%, 55%);
+    font-weight: 700;
+}
+
+.dp-year-btn--selected {
+    background: linear-gradient(135deg, hsla(185, 80%, 45%, 0.3), hsla(265, 70%, 55%, 0.15));
+    border-color: hsl(185, 95%, 55%);
+    color: hsl(185, 95%, 65%);
+    font-weight: 700;
+}
+
+/* ── Month Picker View ── */
+.dp-month-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.dp-month-btn {
+    padding: 12px 4px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: hsl(220, 15%, 65%);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms ease;
+    text-align: center;
+}
+
+.dp-month-btn:hover {
+    background: hsla(185, 50%, 40%, 0.12);
+    border-color: hsla(185, 60%, 50%, 0.25);
+    color: hsl(220, 20%, 92%);
+}
+
+.dp-month-btn--current {
+    border-color: hsla(185, 60%, 50%, 0.3);
+    color: hsl(185, 95%, 55%);
+    font-weight: 700;
+}
+
+.dp-month-btn--selected {
+    background: linear-gradient(135deg, hsla(185, 80%, 45%, 0.3), hsla(265, 70%, 55%, 0.15));
+    border-color: hsl(185, 95%, 55%);
+    color: hsl(185, 95%, 65%);
+    font-weight: 700;
+}

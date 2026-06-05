@@ -134,8 +134,8 @@ body {
 }
 
 .brand-logo {
-    width: 46px;
-    height: 46px;
+    width: 64px;
+    height: 64px;
     border-radius: var(--radius-md);
     object-fit: cover;
     border: 1px solid hsla(185, 80%, 60%, 0.25);
@@ -648,6 +648,7 @@ body {
 .log-entry--success { border-left-color: var(--accent-green); background: hsla(145, 60%, 20%, 0.1); }
 .log-entry--warning { border-left-color: var(--accent-amber); background: hsla(38, 60%, 20%, 0.1); }
 .log-entry--error   { border-left-color: var(--accent-red); background: hsla(0, 60%, 20%, 0.1); }
+.log-entry--progress { border-left-color: var(--accent-cyan); background: hsla(185, 60%, 20%, 0.1); }
 
 .log-time {
     font-family: var(--font-mono);
@@ -661,6 +662,7 @@ body {
 .log-entry--success .log-msg { color: var(--accent-green); }
 .log-entry--error   .log-msg { color: var(--accent-red); }
 .log-entry--warning .log-msg { color: var(--accent-amber); }
+.log-entry--progress .log-msg { color: var(--accent-cyan); }
 
 /* ── New Controls System ── */
 .ctrl-row {
@@ -769,8 +771,8 @@ body {
 
 /* Toggle Track */
 .ctrl-pill-group--toggle {
-    justify-content: flex-end;
-    margin-left: auto;
+    justify-content: flex-start;
+    margin-left: 10px;
 }
 .toggle-label {
     display: flex;

@@ -382,6 +382,238 @@
   ('_threading_local',
    'C:\\Users\\kathi\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\_threading_local.py',
    'PYMODULE'),
+  ('aiohappyeyeballs',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohappyeyeballs\\__init__.py',
+   'PYMODULE'),
+  ('aiohappyeyeballs._staggered',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohappyeyeballs\\_staggered.py',
+   'PYMODULE'),
+  ('aiohappyeyeballs.impl',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohappyeyeballs\\impl.py',
+   'PYMODULE'),
+  ('aiohappyeyeballs.types',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohappyeyeballs\\types.py',
+   'PYMODULE'),
+  ('aiohappyeyeballs.utils',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohappyeyeballs\\utils.py',
+   'PYMODULE'),
+  ('aiohttp',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\__init__.py',
+   'PYMODULE'),
+  ('aiohttp._cookie_helpers',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\_cookie_helpers.py',
+   'PYMODULE'),
+  ('aiohttp._websocket',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\_websocket\\__init__.py',
+   'PYMODULE'),
+  ('aiohttp._websocket.helpers',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\_websocket\\helpers.py',
+   'PYMODULE'),
+  ('aiohttp._websocket.models',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\_websocket\\models.py',
+   'PYMODULE'),
+  ('aiohttp._websocket.reader',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\_websocket\\reader.py',
+   'PYMODULE'),
+  ('aiohttp._websocket.reader_py',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\_websocket\\reader_py.py',
+   'PYMODULE'),
+  ('aiohttp._websocket.writer',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\_websocket\\writer.py',
+   'PYMODULE'),
+  ('aiohttp.abc',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\abc.py',
+   'PYMODULE'),
+  ('aiohttp.base_protocol',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\base_protocol.py',
+   'PYMODULE'),
+  ('aiohttp.client',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\client.py',
+   'PYMODULE'),
+  ('aiohttp.client_exceptions',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\client_exceptions.py',
+   'PYMODULE'),
+  ('aiohttp.client_middleware_digest_auth',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\client_middleware_digest_auth.py',
+   'PYMODULE'),
+  ('aiohttp.client_middlewares',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\client_middlewares.py',
+   'PYMODULE'),
+  ('aiohttp.client_proto',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\client_proto.py',
+   'PYMODULE'),
+  ('aiohttp.client_reqrep',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\client_reqrep.py',
+   'PYMODULE'),
+  ('aiohttp.client_ws',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\client_ws.py',
+   'PYMODULE'),
+  ('aiohttp.compression_utils',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\compression_utils.py',
+   'PYMODULE'),
+  ('aiohttp.connector',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\connector.py',
+   'PYMODULE'),
+  ('aiohttp.cookiejar',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\cookiejar.py',
+   'PYMODULE'),
+  ('aiohttp.formdata',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\formdata.py',
+   'PYMODULE'),
+  ('aiohttp.hdrs',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\hdrs.py',
+   'PYMODULE'),
+  ('aiohttp.helpers',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\helpers.py',
+   'PYMODULE'),
+  ('aiohttp.http',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\http.py',
+   'PYMODULE'),
+  ('aiohttp.http_exceptions',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\http_exceptions.py',
+   'PYMODULE'),
+  ('aiohttp.http_parser',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\http_parser.py',
+   'PYMODULE'),
+  ('aiohttp.http_websocket',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\http_websocket.py',
+   'PYMODULE'),
+  ('aiohttp.http_writer',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\http_writer.py',
+   'PYMODULE'),
+  ('aiohttp.log',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\log.py',
+   'PYMODULE'),
+  ('aiohttp.multipart',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\multipart.py',
+   'PYMODULE'),
+  ('aiohttp.payload',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\payload.py',
+   'PYMODULE'),
+  ('aiohttp.payload_streamer',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\payload_streamer.py',
+   'PYMODULE'),
+  ('aiohttp.resolver',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\resolver.py',
+   'PYMODULE'),
+  ('aiohttp.streams',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\streams.py',
+   'PYMODULE'),
+  ('aiohttp.tcp_helpers',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\tcp_helpers.py',
+   'PYMODULE'),
+  ('aiohttp.tracing',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\tracing.py',
+   'PYMODULE'),
+  ('aiohttp.typedefs',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\typedefs.py',
+   'PYMODULE'),
+  ('aiohttp.web',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web.py',
+   'PYMODULE'),
+  ('aiohttp.web_app',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_app.py',
+   'PYMODULE'),
+  ('aiohttp.web_exceptions',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_exceptions.py',
+   'PYMODULE'),
+  ('aiohttp.web_fileresponse',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_fileresponse.py',
+   'PYMODULE'),
+  ('aiohttp.web_log',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_log.py',
+   'PYMODULE'),
+  ('aiohttp.web_middlewares',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_middlewares.py',
+   'PYMODULE'),
+  ('aiohttp.web_protocol',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_protocol.py',
+   'PYMODULE'),
+  ('aiohttp.web_request',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_request.py',
+   'PYMODULE'),
+  ('aiohttp.web_response',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_response.py',
+   'PYMODULE'),
+  ('aiohttp.web_routedef',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_routedef.py',
+   'PYMODULE'),
+  ('aiohttp.web_runner',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_runner.py',
+   'PYMODULE'),
+  ('aiohttp.web_server',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_server.py',
+   'PYMODULE'),
+  ('aiohttp.web_urldispatcher',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_urldispatcher.py',
+   'PYMODULE'),
+  ('aiohttp.web_ws',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\web_ws.py',
+   'PYMODULE'),
+  ('aiohttp.worker',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiohttp\\worker.py',
+   'PYMODULE'),
+  ('aiosignal',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\aiosignal\\__init__.py',
+   'PYMODULE'),
   ('annotated_types',
    'D:\\Archer\\App\\Python App\\source\\repos\\Market '
    'Data\\venv\\Lib\\site-packages\\annotated_types\\__init__.py',
@@ -1947,6 +2179,10 @@
   ('fractions',
    'C:\\Users\\kathi\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\fractions.py',
    'PYMODULE'),
+  ('frozenlist',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\frozenlist\\__init__.py',
+   'PYMODULE'),
   ('ftplib',
    'C:\\Users\\kathi\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\ftplib.py',
    'PYMODULE'),
@@ -2437,6 +2673,22 @@
    'PYMODULE'),
   ('mimetypes',
    'C:\\Users\\kathi\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\mimetypes.py',
+   'PYMODULE'),
+  ('multidict',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\multidict\\__init__.py',
+   'PYMODULE'),
+  ('multidict._abc',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\multidict\\_abc.py',
+   'PYMODULE'),
+  ('multidict._compat',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\multidict\\_compat.py',
+   'PYMODULE'),
+  ('multidict._multidict_py',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\multidict\\_multidict_py.py',
    'PYMODULE'),
   ('multiprocessing',
    'C:\\Users\\kathi\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\multiprocessing\\__init__.py',
@@ -3073,6 +3325,10 @@
    'PYMODULE'),
   ('optparse',
    'C:\\Users\\kathi\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\optparse.py',
+   'PYMODULE'),
+  ('orjson',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\orjson\\__init__.py',
    'PYMODULE'),
   ('packaging',
    'D:\\Archer\\App\\Python App\\source\\repos\\Market '
@@ -4282,6 +4538,22 @@
    'PYMODULE'),
   ('pprint',
    'C:\\Users\\kathi\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\pprint.py',
+   'PYMODULE'),
+  ('propcache',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\propcache\\__init__.py',
+   'PYMODULE'),
+  ('propcache._helpers',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\propcache\\_helpers.py',
+   'PYMODULE'),
+  ('propcache._helpers_py',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\propcache\\_helpers_py.py',
+   'PYMODULE'),
+  ('propcache.api',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\propcache\\api.py',
    'PYMODULE'),
   ('pty',
    'C:\\Users\\kathi\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\pty.py',
@@ -7132,6 +7404,38 @@
   ('yaml.tokens',
    'D:\\Archer\\App\\Python App\\source\\repos\\Market '
    'Data\\venv\\Lib\\site-packages\\yaml\\tokens.py',
+   'PYMODULE'),
+  ('yarl',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\yarl\\__init__.py',
+   'PYMODULE'),
+  ('yarl._parse',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\yarl\\_parse.py',
+   'PYMODULE'),
+  ('yarl._path',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\yarl\\_path.py',
+   'PYMODULE'),
+  ('yarl._query',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\yarl\\_query.py',
+   'PYMODULE'),
+  ('yarl._quoters',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\yarl\\_quoters.py',
+   'PYMODULE'),
+  ('yarl._quoting',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\yarl\\_quoting.py',
+   'PYMODULE'),
+  ('yarl._quoting_py',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\yarl\\_quoting_py.py',
+   'PYMODULE'),
+  ('yarl._url',
+   'D:\\Archer\\App\\Python App\\source\\repos\\Market '
+   'Data\\venv\\Lib\\site-packages\\yarl\\_url.py',
    'PYMODULE'),
   ('zipfile',
    'C:\\Users\\kathi\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\zipfile\\__init__.py',

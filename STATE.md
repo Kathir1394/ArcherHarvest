@@ -1,24 +1,27 @@
 # STATE — NSE Market Data Downloader
 
 ## Architecture
-- **Backend**: FastAPI (Python) serving REST API + SSE real-time events
-- **Frontend**: Single-page HTML/CSS/JS with glassmorphism theme
-- **Data Source**: Kite Connect API (Zerodha) — 1-min OHLCV candles
-- **Storage**: Parquet files, partitioned per-symbol per-year in `data/`
-- **State**: `download_state.json` for crash recovery
+- **Backend**: FastAPI (Python) serving REST API + SSE real-time events.
+- **Frontend**: Single-page HTML/CSS/JS with a Glassmorphism "Futuristic Minimalist" theme. Custom DatePicker logic integrated.
+- **Data Source**: Kite Connect API (Zerodha) — Historical data (Minute to Daily).
+- **Storage**: Parquet files, partitioned per-symbol per-year in `data/`. Extremely fast read/writes using PyArrow.
+- **State & Recovery**: `download_state.json` tracks progress per stock/chunk for pause/resume and crash recovery.
+- **Concurrency & Rate Limiting**: Asynchronous `fetcher_engine` leveraging a `TokenBucket` for optimal parallel execution while strictly respecting 3 requests/second rate limits.
+- **Desktop Launcher**: `start_app.py` + `launcher_visuals.py` — CustomTkinter animated dark theme window with embedded terminal, server lifecycle management, DPI awareness, and browser auto-launch. Compiled into a standalone executable (`ArcherHarvest.exe`).
 
-## Completed
-- [x] Full backend: config, auth (OAuth), instrument loader, fetcher engine, state manager, storage handler, holiday calendar, API routes
-- [x] Full frontend: dashboard with stats, controls (start/pause/resume/stop/retry), progress bar, stock grid, activity log
-- [x] Desktop launcher: start_app.py + launcher_visuals.py — animated dark theme window with embedded terminal, server lifecycle, browser auto-launch
-- [x] SSE real-time event stream
-- [x] Retry logic with exponential backoff (5 retries, 1s→60s)
-- [x] Pause/resume via asyncio.Event
-- [x] Crash recovery via JSON state persistence
-- [x] Virtual environment with all dependencies installed
-- [x] Server verified running at http://127.0.0.1:8000
+## Completed Features
+- [x] Full backend architecture (FastAPI, auth, SSE, storage, API routes).
+- [x] Full frontend dashboard (glassmorphism UI, stats, progress bar, real-time activity log).
+- [x] Segment Filtering (Equity, Index, Future, Option, Commodity) and Exchange Filtering.
+- [x] Continuous Futures data fetching support.
+- [x] High-precision chunked ETA calculation algorithm for realistic wait times.
+- [x] Retry logic with exponential backoff (5 retries, 1s→60s).
+- [x] Pause/resume mechanics using `asyncio.Event`.
+- [x] Crash recovery and smart sync (skips already downloaded date ranges).
+- [x] Maximum speed concurrency with a custom Token Bucket rate limiter to eliminate worker starvation.
+- [x] PyInstaller standalone compilation with DPI awareness, embedded web server, and transparent high-res taskbar icons.
+- [x] Custom Glassmorphism calendar DatePicker.
 
 ## Pending
-- [ ] User needs to authenticate with Kite Connect to begin actual downloads
-- [ ] First real data download run
-- [ ] Kite redirect URL in developer dashboard must be set to `http://127.0.0.1:8000/api/auth/callback`
+- [ ] Production testing of large-scale (5-10 year) continuous downloads.
+- [ ] Add support for downloading specific Option/Futures symbols by exact trading symbol.

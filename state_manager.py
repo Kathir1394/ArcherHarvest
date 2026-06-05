@@ -30,6 +30,8 @@ class StateManager:
         self.download_end_time: float | None = None
         self._date_from: str | None = None
         self._date_to: str | None = None
+        self.total_chunks: int = 0
+        self.completed_chunks: int = 0
 
     def initialize(self, symbols: list[str], date_from: str, date_to: str):
         """Set up state for a new download run, preserving completed entries."""
@@ -37,6 +39,8 @@ class StateManager:
         self._date_to = date_to
         self.download_start_time = time.time()
         self.download_end_time = None
+        self.total_chunks = 0
+        self.completed_chunks = 0
 
         for sym in symbols:
             if sym not in self.stocks or self.stocks[sym]["status"] != StockStatus.COMPLETED:
@@ -77,6 +81,12 @@ class StateManager:
             self.stocks[symbol]["last_fetched_date"] = last_date
             self.stocks[symbol]["candles_fetched"] += candles
             self.stocks[symbol]["updated_at"] = datetime.now().isoformat()
+            
+    def set_total_chunks(self, total: int):
+        self.total_chunks = total
+        
+    def increment_chunk(self):
+        self.completed_chunks += 1
 
     def get_resume_date(self, symbol: str) -> str | None:
         entry = self.stocks.get(symbol)
@@ -114,13 +124,20 @@ class StateManager:
             total_candles += data.get("candles_fetched", 0)
 
         done = counts["completed"]
-        progress = (done / total * 100) if total > 0 else 0
+        if self.total_chunks > 0:
+            progress = (self.completed_chunks / self.total_chunks * 100)
+        else:
+            progress = (done / total * 100) if total > 0 else 0
 
         elapsed = 0.0
         eta = 0.0
         if self.download_start_time:
             elapsed = time.time() - self.download_start_time
-            if done > 0:
+            if self.completed_chunks > 0 and self.total_chunks > 0:
+                rate = elapsed / self.completed_chunks
+                remaining = self.total_chunks - self.completed_chunks
+                eta = rate * remaining
+            elif done > 0:
                 rate = elapsed / done
                 remaining = total - done - counts["failed"]
                 eta = rate * remaining
